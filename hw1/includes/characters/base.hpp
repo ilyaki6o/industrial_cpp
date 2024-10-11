@@ -7,13 +7,23 @@
 #include "../my_shared_ptr/shared_ptr.hpp"
 #include "../logger.hpp"
 
+enum class Role{
+    DEFAULT,
+    CIVILIAN,
+    COMMISSAR,
+    DOCTOR,
+    MAFIA,
+    MANIAC,
+};
+
 class Player {
 protected:
     std::string name;
     bool is_alive;
+    Role role;
 
 public:
-    Player(const std::string& name) : name(name), is_alive(true) {}
+    Player(const std::string& name) : name(name), is_alive(true), role(Role::DEFAULT){}
 
     virtual std::string performNightAction(std::vector<msp::shared_ptr<Player>>& alivePlayers, Logger& logger) {
         return "virtual func performNightAction";
@@ -33,6 +43,10 @@ public:
 
     void setAlive(){
         is_alive = true;
+    }
+
+    Role getRole(){
+        return role;
     }
 
     std::string getName() const {
