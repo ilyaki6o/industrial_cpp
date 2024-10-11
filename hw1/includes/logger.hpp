@@ -15,21 +15,33 @@ enum class LogLevel {
     ERROR
 };
 
+void createPath(fs::path path){
+    if (fs::exists(path)){
+        return;
+    }else{
+        createPath(path.parent_path());
+    }
+
+    fs::create_directories(path);
+
+    return;
+}
+
 class Logger {
 public:
-    Logger(const std::string& strFilePath) {
-        fs::path logFilePath(strFilePath);
-
-        if (!fs::exists(logFilePath.parent_path())) {
-            std::cerr <<  "Log file directory does not exist: " << logFilePath.string() << std::endl;
+    Logger(const std::string& strFileDir) : logFileDir(strFileDir){
+        if (!fs::exists(logFileDir)) {
+            createPath(logFileDir);
         }
+
+        fs::path logFilePath = logFileDir / "start_game.log";
 
         logFile.open(logFilePath, std::ios::app);
 
         if (!logFile.is_open()) {
             std::cerr << "Failed to open log file: " << logFilePath.string() << std::endl;
         }else{
-            logFile << "\n-------- New session --------" << std::endl;
+            logFile << "-------- New session --------" << std::endl;
         }
     }
 
@@ -49,8 +61,23 @@ public:
         }
     }
 
+    void newRound(int roundNumb){
+        logFile.close();
+
+        fs::path logFilePath = logFileDir / ("round" + std::to_string(roundNumb) + ".log");
+
+        logFile.open(logFilePath, std::ios::app);
+
+        if (!logFile.is_open()) {
+            std::cerr << "Failed to open log file: " << logFilePath.string() << std::endl;
+        }else{
+            logFile << "-------- " << "Round" + std::to_string(roundNumb) << " --------" << std::endl;
+        }
+    }
+
 private:
     std::ofstream logFile;
+    fs::path logFileDir;
 
     // Get the current time as a string
     std::string getCurrentTime() {
@@ -72,18 +99,3 @@ private:
 };
 
 #endif
-
-//int main() {
-//    try {
-//        // Create logger with a path using std::filesystem
-//        Logger logger(fs::path("logs/logfile.txt"));
-//
-//        logger.log("This is an info message.", LogLevel::INFO);
-//        logger.log("This is a warning message.", LogLevel::WARNING);
-//        logger.log("This is an error message.", LogLevel::ERROR);
-//    } catch (const std::exception& e) {
-//        std::cerr << "Exception: " << e.what() << std::endl;
-//    }
-//
-//    return 0;
-//}
