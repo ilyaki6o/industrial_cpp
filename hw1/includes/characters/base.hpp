@@ -2,8 +2,10 @@
 #define BASE
 
 #include <string>
-#include "../my_shared_ptr/shared_ptr.hpp"
 #include <iostream>
+
+#include "../my_shared_ptr/shared_ptr.hpp"
+#include "../logger.hpp"
 
 class Player {
 protected:
@@ -13,11 +15,11 @@ protected:
 public:
     Player(const std::string& name) : name(name), is_alive(true) {}
 
-    virtual std::string performNightAction(std::vector<msp::shared_ptr<Player>>& alivePlayers) {
+    virtual std::string performNightAction(std::vector<msp::shared_ptr<Player>>& alivePlayers, Logger& logger) {
         return "virtual func performNightAction";
     }
 
-    virtual std::string vote(std::vector<msp::shared_ptr<Player>>& alivePlayers) {
+    virtual std::string vote(std::vector<msp::shared_ptr<Player>>& alivePlayers, Logger& logger) {
         return "virtual func vote";
     }
 
