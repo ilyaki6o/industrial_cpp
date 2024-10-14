@@ -36,7 +36,7 @@ public:
 
         fs::path logFilePath = logFileDir / "start_game.log";
 
-        logFile.open(logFilePath, std::ios::app);
+        logFile.open(logFilePath, std::ios::trunc);
 
         if (!logFile.is_open()) {
             std::cerr << "Failed to open log file: " << logFilePath.string() << std::endl;
@@ -66,7 +66,7 @@ public:
 
         fs::path logFilePath = logFileDir / ("round" + std::to_string(roundNumb) + ".log");
 
-        logFile.open(logFilePath, std::ios::app);
+        logFile.open(logFilePath, std::ios::trunc);
 
         if (!logFile.is_open()) {
             std::cerr << "Failed to open log file: " << logFilePath.string() << std::endl;

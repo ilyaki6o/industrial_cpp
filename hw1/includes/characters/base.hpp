@@ -31,50 +31,34 @@ enum class PlayerStatus{
 };
 
 
-
-
 class Player {
 protected:
     std::string name;
     bool is_alive;
     Role role;
     PlayerStatus status;
-    int target;
+    int target_;
 
 
-    int getRandomIndex(const int numbPlayers) {
-        if (!numbPlayers) {
-            return -1;
+    template <std::ranges::range R>
+    auto getRandomItem(R&& range) -> std::ranges::range_value_t<R> {
+        // Get the size of the range
+        auto size = std::ranges::distance(range);
+
+        if (size == 0) {
+            std::cerr << "The range is empty." << std::endl;
         }
 
+        // Create a random number generator
         std::random_device rd;
         std::mt19937 gen(rd());
-        std::uniform_int_distribution<> dist(0, numbPlayers - 1);
+        std::uniform_int_distribution<> dis(0, size - 1);
 
-        int randomIndex = dist(gen);
-        return randomIndex;
-    }
+        // Get a random index
+        auto randomIndex = dis(gen);
 
-    void getRandomPlayer(std::map<std::string, msp::shared_ptr<Player>>& players, msp::shared_ptr<Player>& chosenPlayer){
-        auto mapValues = [](const auto& pair){ return pair.second; };
-        auto chooseAlive = [](const auto& player){ return player->isAlive(); };
-
-        auto alivePlayers = players | std::views::transform(mapValues) | std::views::filter(chooseAlive);
-
-        int randIndex = getRandomIndex(std::ranges::distance(alivePlayers));
-
-        int i = 0;
-
-        for (const auto& player: alivePlayers){
-            if (i == randIndex){
-                chosenPlayer = player;
-                break;
-            }
-
-            i++;
-        }
-
-        return;
+        // Return the element at the random index
+        return *std::ranges::next(std::ranges::begin(range), randomIndex);
     }
 
     awaitable<std::string> read_input(posix::stream_descriptor& in){
@@ -88,7 +72,7 @@ protected:
     }
 
     template<std::ranges::range R>
-    awaitable<std::string> requestToUser(posix::stream_descriptor& in, std::string query, R&& alivePlayersNames){
+    awaitable<std::string> requestToUser(posix::stream_descriptor& in, std::string query, R&& targetList){
         if (!in.is_open()){
             std::cerr << "Input descriptor is already closed" << std::endl;
             co_return "";
@@ -96,15 +80,15 @@ protected:
 
         int column = 0;
 
-        std::cout << "Alive players:";
+        std::cout << "Availabe targets:";
 
-        for (const auto& playerName: alivePlayersNames){
+        for (const auto& target: targetList){
             if (column % 3 != 0){
-                std::cout << playerName << " ";
+                std::cout << target << " ";
                 column++;
             }else{
                 std::cout << std::endl;
-                std::cout << playerName << " ";
+                std::cout << target << " ";
                 column = 1;
             }
         }
@@ -118,20 +102,20 @@ protected:
         int attempt = 0;
 
         while (attempt < 5){
-            std::string chosenName = co_await read_input(in);
+            std::string chosenTarget = co_await read_input(in);
 
-            auto it = std::ranges::find(alivePlayersNames, chosenName);
+            auto it = std::ranges::find(targetList, chosenTarget);
 
-            if (it != std::ranges::end(alivePlayersNames)){
-                co_return chosenName;
+            if (it != std::ranges::end(targetList)){
+                co_return chosenTarget;
             }
 
-            std::cout << "Can't find player with that name. Please try again" << std::endl;
+            std::cout << "Can't find that target. Please try again" << std::endl;
 
             attempt++;
         }
 
-        std::cout << "After 5 attempts, you were unable to enter the name correctly. Skip the current phase." << std::endl;
+        std::cout << "After 5 attempts, you were unable to enter the target correctly. Skip the current phase." << std::endl;
 
         co_return "";
     }
@@ -143,13 +127,15 @@ public:
         PlayerStatus start_status = PlayerStatus::BOT
     ) : name(name), is_alive(true), role(start_role), status(start_status){}
 
-    virtual awaitable<void> performNightAction(
+    virtual awaitable<std::string> nightChoice(
         std::map<std::string, msp::shared_ptr<Player>>& players,
         Logger& logger,
         posix::stream_descriptor& in
     ){
-        co_return;
+        co_return "";
     }
+
+    virtual void act(msp::shared_ptr<Player>& target){}
 
     virtual awaitable<void> vote(
         std::map<std::string, msp::shared_ptr<Player>>& players,
@@ -163,30 +149,38 @@ public:
 
         msp::shared_ptr<Player> chosenPlayer{};
 
-        if (this->getStatus() == PlayerStatus::BOT){
-            getRandomPlayer(players, chosenPlayer);
-        }else{
-            auto mapValues = [](const auto& pair){ return pair.second; };
-            auto chooseAlive = [](const auto& player){ return player->isAlive(); };
-            auto getNames = [](const auto& player){ return player->getName(); };
+        auto mapValues = [](const auto& pair){ return pair.second; };
+        auto chooseAlive = [this](const auto& player){ return player->isAlive() && (player->getName() != this->getName()); };
+        auto getNames = [](const auto& player){ return player->getName(); };
 
+        if (this->getStatus() == PlayerStatus::BOT){
+            auto alivePlayers = players | std::views::transform(mapValues) | std::views::filter(chooseAlive);
+
+            chosenPlayer = getRandomItem(alivePlayers);
+        }else{
             auto alivePlayersNames = players | std::views::transform(mapValues) | std::views::filter(chooseAlive) | std::views::transform(getNames);
 
             std::string chosenName = co_await requestToUser(in, "Enter name of alive player", alivePlayersNames);
 
             if (chosenName.empty()){
-                getRandomPlayer(players, chosenPlayer);
+                auto alivePlayers = players | std::views::transform(mapValues) | std::views::filter(chooseAlive);
+
+                chosenPlayer = getRandomItem(alivePlayers);
             }else{
                 chosenPlayer = players[chosenName];
             }
         }
 
         logger.log(
-            "Игрок " + this->getName()
+            "Player " + this->getName()
             + " (" + this->getStrRole() + ") "
-            + "выбрал игрока " + chosenPlayer->getName()
+            + "vote for player " + chosenPlayer->getName()
             + " (" + chosenPlayer->getStrRole() +")"
         );
+
+        if (this->getStatus() == PlayerStatus::USER){
+            std::cout << "You vote for player " + chosenPlayer->getName() + " (" + chosenPlayer->getStrRole() + ")" << std::endl;
+        }
 
         chosenPlayer->voteUp();
 
@@ -213,17 +207,17 @@ public:
         switch (this->getRole())
         {
         case Role::CIVILIAN:
-            return "Мирный";
+            return "Civilian";
         case Role::COMMISSAR:
-            return "Комиссар";
+            return "Commissar";
         case Role::DOCTOR:
-            return "Доктор";
+            return "Doctor";
         case Role::MAFIA:
-            return "Мафия";
+            return "Mafia";
         case Role::MANIAC:
-            return "Маньяк";
+            return "Maniac";
         default:
-            return "Неопределено";
+            return "Undefined";
         }
     }
 
@@ -236,21 +230,21 @@ public:
     }
 
     void voteUp(){
-        target++;
+        target_++;
     }
 
     void resetVotes(){
-        target = 0;
+        target_ = 0;
     }
 
     int getVoteRes(){
-        return target;
+        return target_;
     }
 
     virtual ~Player() = default;
 
     friend std::ostream& operator<<(std::ostream& os, const Player& player) {
-        os << player.name << (player.is_alive ? " (жив)" : " (мертв)");
+        os << player.name << (player.is_alive ? " (alive)" : " (dead)");
         return os;
     }
 };
