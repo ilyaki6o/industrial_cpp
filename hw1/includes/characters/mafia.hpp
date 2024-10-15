@@ -92,7 +92,7 @@ public:
         }
 
         // Убиваем выбранного игрока
-        logger.log("Mafia boss chose player " + chosenPlayer->getName() + " (" + chosenPlayer->getStrRole() + ") and kill him.");
+        logger.log("Mafia boss(" + this->getName() +  ") chose player " + chosenPlayer->getName() + "(" + chosenPlayer->getStrRole() + ") and kill him.");
 
         if (this->getStatus() == PlayerStatus::USER){
             std::cout << "You chose player " + chosenPlayer->getName() + " to kill him." << std::endl;

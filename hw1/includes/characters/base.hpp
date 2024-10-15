@@ -212,7 +212,7 @@ public:
         return role;
     }
 
-    std::string getStrRole(){
+    virtual std::string getStrRole(){
         switch (this->getRole())
         {
         case Role::CIVILIAN:

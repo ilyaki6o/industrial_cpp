@@ -113,7 +113,7 @@ public:
             notMafiasNames.insert(chosenPlayerName);
         }
 
-        logger.log("Commissioner " + this->getName() + " checked player " + chosenPlayer->getName() + ". He is " + chosenPlayer->getStrRole());
+        logger.log("Commissioner(" + this->getName() + ") checked player " + chosenPlayer->getName() + ". He is " + chosenPlayer->getStrRole());
 
         if (this->getStatus() == PlayerStatus::USER){
             std::cout << "You checked player " + chosenPlayer->getName() + ". He is " + chosenPlayer->getStrRole() << std::endl;

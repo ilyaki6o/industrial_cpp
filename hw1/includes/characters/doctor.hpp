@@ -66,7 +66,7 @@ public:
 
         // Лечим выбранного игрока
         last_healed_player = chosenPlayer->getName(); // Запоминаем последнего вылеченного игрока
-        logger.log("Doctor choose for heal " + chosenPlayer->getName() + " (" + chosenPlayer->getStrRole() + ").");
+        logger.log("Doctor(" + this->getName() + ") choose for heal " + chosenPlayer->getName() + " (" + chosenPlayer->getStrRole() + ").");
 
         if (this->getStatus() == PlayerStatus::USER){
             std::cout << "You choose to heal player " + chosenPlayer->getName() << std::endl;
