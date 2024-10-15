@@ -38,28 +38,40 @@ public:
         }
 
         // Если у комиссара есть статус USER, он может выбрать, убивать ли мафию
-        if (this->getStatus() == PlayerStatus::USER && !foundMafiasNames.empty()) {
-            std::string choice = co_await requestToUser(
-                in,
-                "There are recognized mafias. You want to kill one?",
-                std::set{"yes", "no"} | std::views::all
-            );
+        if (!foundMafiasNames.empty()){
+            if (this->getStatus() == PlayerStatus::USER) {
+                std::string choice = co_await requestToUser(
+                    in,
+                    "There are recognized mafias. You want to kill one?",
+                    std::set{"yes", "no"} | std::views::all
+                );
 
-            if (choice == "yes"){
-                auto chooseAlive = [this, &players](const auto& name) { return players[name]->isAlive(); };
+                if (choice == "yes"){
+                    auto chooseAlive = [&players](const auto& name) { return players[name]->isAlive(); };
+                    auto aliveMafiasNames = foundMafiasNames | std::views::filter(chooseAlive);
+
+                    std::string chosenMafName = co_await requestToUser(in, "Enter name of mafia player", aliveMafiasNames);
+
+                    if (chosenMafName.empty()){
+                        chosenMafName = getRandomItem(aliveMafiasNames);
+                    }
+
+                    //players[chosenMafName]->kill();
+                    currentAction = ACTION::KILL;
+                    logger.log("Commissioner " + this->getName() + " chose to kill mafia: " + players[chosenMafName]->getName());
+
+                    std::cout << "You chose to kill mafia: " + players[chosenMafName]->getName() << std::endl;
+                    co_return chosenMafName;
+                }
+            }else{
+                auto chooseAlive = [&players](const auto& name) { return players[name]->isAlive(); };
                 auto aliveMafiasNames = foundMafiasNames | std::views::filter(chooseAlive);
 
-                std::string chosenMafName = co_await requestToUser(in, "Enter name of mafia player", aliveMafiasNames);
+                std::string chosenMafName = getRandomItem(aliveMafiasNames);
 
-                if (chosenMafName.empty()){
-                    chosenMafName = getRandomItem(aliveMafiasNames);
-                }
-
-                //players[chosenMafName]->kill();
                 currentAction = ACTION::KILL;
                 logger.log("Commissioner " + this->getName() + " chose to kill mafia: " + players[chosenMafName]->getName());
 
-                std::cout << "You chose to kill mafia: " + players[chosenMafName]->getName() << std::endl;
                 co_return chosenMafName;
             }
         }
@@ -115,7 +127,8 @@ public:
             std::cout << "Commissioner checked player " + target->getName() + "." << std::endl;
         }else if (currentAction == ACTION::KILL){
             target->kill();
-            std::cout << "Commissioner kill player " + target->getName() + "." << std::endl;
+            foundMafiasNames.erase(target->getName());
+            std::cout << "Commissioner kill player " + target->getName() + "(" + target->getStrRole() + ")." << std::endl;
         }
     }
 
@@ -123,7 +136,8 @@ public:
     virtual awaitable<void> vote(
         std::map<std::string, msp::shared_ptr<Player>>& players,
         Logger& logger,
-        posix::stream_descriptor& in
+        posix::stream_descriptor& in,
+        Role exceptRole = Role::DEFAULT
     ) override {
         co_await Player::vote(players, logger, in);
     }

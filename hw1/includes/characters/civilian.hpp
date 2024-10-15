@@ -10,7 +10,8 @@ public:
     virtual awaitable<void> vote(
         std::map<std::string, msp::shared_ptr<Player>>& players,
         Logger& logger,
-        posix::stream_descriptor& in
+        posix::stream_descriptor& in,
+        Role exceptRole = Role::DEFAULT
     ) override {
         co_await Player::vote(players, logger, in);
     }

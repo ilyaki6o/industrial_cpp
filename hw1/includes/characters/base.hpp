@@ -125,7 +125,7 @@ public:
         const std::string& name,
         Role start_role = Role::DEFAULT,
         PlayerStatus start_status = PlayerStatus::BOT
-    ) : name(name), is_alive(true), role(start_role), status(start_status){}
+    ) : name(name), is_alive(true), role(start_role), status(start_status), target_(0) {}
 
     virtual awaitable<std::string> nightChoice(
         std::map<std::string, msp::shared_ptr<Player>>& players,
@@ -140,7 +140,8 @@ public:
     virtual awaitable<void> vote(
         std::map<std::string, msp::shared_ptr<Player>>& players,
         Logger& logger,
-        posix::stream_descriptor& in
+        posix::stream_descriptor& in,
+        Role exceptRole = Role::DEFAULT
     ){
         if (players.empty()) {
             std::cerr << "There is no players" << std::endl;
@@ -151,19 +152,27 @@ public:
 
         auto mapValues = [](const auto& pair){ return pair.second; };
         auto chooseAlive = [this](const auto& player){ return player->isAlive() && (player->getName() != this->getName()); };
+        auto exceptPlayers = [&exceptRole](const auto& player){ return player->getRole() != exceptRole; };
         auto getNames = [](const auto& player){ return player->getName(); };
 
         if (this->getStatus() == PlayerStatus::BOT){
-            auto alivePlayers = players | std::views::transform(mapValues) | std::views::filter(chooseAlive);
+            auto alivePlayers = players | std::views::transform(mapValues)
+                                        | std::views::filter(chooseAlive)
+                                        | std::views::filter(exceptPlayers);
 
             chosenPlayer = getRandomItem(alivePlayers);
         }else{
-            auto alivePlayersNames = players | std::views::transform(mapValues) | std::views::filter(chooseAlive) | std::views::transform(getNames);
+            auto alivePlayersNames = players | std::views::transform(mapValues)
+                                            | std::views::filter(chooseAlive)
+                                            | std::views::filter(exceptPlayers)
+                                            | std::views::transform(getNames);
 
             std::string chosenName = co_await requestToUser(in, "Enter name of alive player", alivePlayersNames);
 
             if (chosenName.empty()){
-                auto alivePlayers = players | std::views::transform(mapValues) | std::views::filter(chooseAlive);
+                auto alivePlayers = players | std::views::transform(mapValues)
+                                            | std::views::filter(chooseAlive)
+                                            | std::views::filter(exceptPlayers);
 
                 chosenPlayer = getRandomItem(alivePlayers);
             }else{
