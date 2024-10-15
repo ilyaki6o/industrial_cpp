@@ -71,10 +71,6 @@ public:
         std::cout << "Maniac kill player " + target->getName() + "(" + target->getStrRole() + ")." << std::endl;
     }
 
-    std::string getStrRole() override {
-        return "Civilian";
-    }
-
     // Деструктор
     ~Maniac() override = default;
 };

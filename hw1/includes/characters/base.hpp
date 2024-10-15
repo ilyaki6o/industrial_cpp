@@ -6,6 +6,7 @@
 #include <random>
 #include <ranges>
 #include <map>
+#include <array>
 
 #include "../my_shared_ptr/shared_ptr.hpp"
 #include "../logger.hpp"
@@ -24,6 +25,7 @@ enum class Role{
     MANIAC,
 };
 
+constexpr std::array<Role, 5> allRoles = { Role::CIVILIAN, Role::COMMISSAR, Role::MAFIA, Role::MANIAC, Role::DOCTOR };
 
 enum class PlayerStatus{
     BOT,
@@ -167,7 +169,7 @@ public:
                                             | std::views::filter(exceptPlayers)
                                             | std::views::transform(getNames);
 
-            std::string chosenName = co_await requestToUser(in, "Enter name of alive player", alivePlayersNames);
+            std::string chosenName = co_await requestToUser(in, "Enter name of alive player for vote", alivePlayersNames);
 
             if (chosenName.empty()){
                 auto alivePlayers = players | std::views::transform(mapValues)
@@ -188,7 +190,7 @@ public:
         );
 
         if (this->getStatus() == PlayerStatus::USER){
-            std::cout << "You vote for player " + chosenPlayer->getName() + " (" + chosenPlayer->getStrRole() + ")" << std::endl;
+            std::cout << "You vote for player " + chosenPlayer->getName()<< std::endl;
         }
 
         chosenPlayer->voteUp();
@@ -218,7 +220,7 @@ public:
         case Role::CIVILIAN:
             return "Civilian";
         case Role::COMMISSAR:
-            return "Commissar";
+            return "Commissioner";
         case Role::DOCTOR:
             return "Doctor";
         case Role::MAFIA:

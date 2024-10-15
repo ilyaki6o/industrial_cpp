@@ -37,8 +37,11 @@ public:
             co_return "";
         }
 
+        auto chooseAliveMafia = [&players](const auto& name) { return players[name]->isAlive(); };
+        auto aliveMafiasNames = foundMafiasNames | std::views::filter(chooseAliveMafia);
+
         // Если у комиссара есть статус USER, он может выбрать, убивать ли мафию
-        if (!foundMafiasNames.empty()){
+        if (std::ranges::begin(aliveMafiasNames) != std::ranges::end(aliveMafiasNames)){
             if (this->getStatus() == PlayerStatus::USER) {
                 std::string choice = co_await requestToUser(
                     in,
@@ -47,9 +50,6 @@ public:
                 );
 
                 if (choice == "yes"){
-                    auto chooseAlive = [&players](const auto& name) { return players[name]->isAlive(); };
-                    auto aliveMafiasNames = foundMafiasNames | std::views::filter(chooseAlive);
-
                     std::string chosenMafName = co_await requestToUser(in, "Enter name of mafia player", aliveMafiasNames);
 
                     if (chosenMafName.empty()){
@@ -64,9 +64,6 @@ public:
                     co_return chosenMafName;
                 }
             }else{
-                auto chooseAlive = [&players](const auto& name) { return players[name]->isAlive(); };
-                auto aliveMafiasNames = foundMafiasNames | std::views::filter(chooseAlive);
-
                 std::string chosenMafName = getRandomItem(aliveMafiasNames);
 
                 currentAction = ACTION::KILL;
@@ -116,7 +113,13 @@ public:
         logger.log("Commissioner(" + this->getName() + ") checked player " + chosenPlayer->getName() + ". He is " + chosenPlayer->getStrRole());
 
         if (this->getStatus() == PlayerStatus::USER){
-            std::cout << "You checked player " + chosenPlayer->getName() + ". He is " + chosenPlayer->getStrRole() << std::endl;
+            std::string role = chosenPlayer->getStrRole();
+
+            if (chosenPlayer->getRole() == Role::MANIAC){
+                role = "Civilian";
+            }
+
+            std::cout << "You checked player " + chosenPlayer->getName() + ". He is " + role << std::endl;
         }
 
         co_return chosenPlayerName;

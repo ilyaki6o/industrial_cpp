@@ -75,6 +75,33 @@ public:
         }
     }
 
+    void nightPhase(){
+        if (logFile.is_open()){
+            logFile << "~~~City falling asleep~~~" << std::endl;
+        }
+    }
+
+    void dayPhase(){
+        if (logFile.is_open()){
+            logFile << "~~~City waking up~~~" << std::endl;
+        }
+    }
+
+    void final(const std::string& message){
+        logFile.close();
+
+        fs::path logFilePath = logFileDir / "final_result.log";
+
+        logFile.open(logFilePath, std::ios::trunc);
+
+        if (!logFile.is_open()) {
+            std::cerr << "Failed to open log file: " << logFilePath.string() << std::endl;
+        }else{
+            logFile << message << std::endl;
+        }
+
+    }
+
 private:
     std::ofstream logFile;
     fs::path logFileDir;
