@@ -1,0 +1,117 @@
+#include "struct.h"
+#include <iostream>
+
+int MAX_ITER_WITHOUT_IMP = 100;
+int STEPS_WIHOUT_DECR = 10;
+
+double BoltzmannLaw::change(double temp, long long iter) const {
+    return temp / std::log(1 + iter);
+}
+
+double CauchyLaw::change(double temp, long long iter) const {
+    return temp / (1 + iter);
+}
+
+double ThirdLaw::change(double temp, long long iter) const {
+    return temp * std::log(1 + iter) / (1 + iter);
+}
+
+void SimulateAnnealing::step(){
+    for (int i = 0; i < STEPS_WIHOUT_DECR; ++i){
+        mutation.perform(curret_view);
+
+        long long new_loss = curret_view->get_loss();
+
+        if (new_loss < cur_loss){
+            update_loss(new_loss);
+        }else{
+            long long df = new_loss - best_loss;
+            double p = std::exp(-df / curret_temp);
+
+            if (rand_p(gen) < p){
+                update_loss(new_loss);
+            }
+        }
+    }
+}
+
+void SimulateAnnealing::update_loss(long long new_loss){
+    if (new_loss < best_loss){
+        ImpScheduleView* imp_best = dynamic_cast<ImpScheduleView*>(best_view);
+        ImpScheduleView* imp_cur = dynamic_cast<ImpScheduleView*>(curret_view);
+        imp_best->copy(imp_cur);
+        iter_with_imp = iter;
+        best_loss = new_loss;
+    }
+
+    cur_loss = new_loss;
+}
+
+void SimulateAnnealing::run(){
+    gen.seed(rd());
+
+    while(true){
+        step();
+
+        if (iter - iter_with_imp > MAX_ITER_WITHOUT_IMP){
+            break;
+        }else{
+            curret_temp = temp_decrease_law.change(start_temp, iter);
+        }
+
+        iter++;
+    }
+}
+
+void ImpMutation::perform(ScheduleView* view){
+    ImpScheduleView* imp_view = dynamic_cast<ImpScheduleView*>(view);
+
+    gen.seed(rd());
+    std::uniform_int_distribution<> dis_works(0, imp_view->getNumbWorks() - 1);
+    std::uniform_int_distribution<> dis_cpu(0, imp_view->getNumbCPU() - 1);
+
+    int chosen_work = dis_works(gen);
+    int chosen_cpu = dis_cpu(gen);
+
+    int old_cpu = imp_view->works_bind[chosen_work];
+    imp_view->works_bind[chosen_work] = chosen_cpu;
+    imp_view->schedule[chosen_cpu].push_back(chosen_work);
+    std::vector<int>& tmp = imp_view->schedule[old_cpu];
+    auto work_iter = std::find(tmp.begin(), tmp.end(), chosen_work);
+    tmp.erase(work_iter);
+}
+
+long long ImpScheduleView::get_loss() const {
+    long long loss = 0;
+
+    for (auto& [key, value]: schedule){
+        long long start = 0;
+
+        for (auto work: value){
+            loss += start + work_time[work];
+            start += work_time[work];
+        }
+    }
+
+    return loss;
+}
+
+void ImpScheduleView::copy(ImpScheduleView* other){
+    work_time = other->work_time;
+    schedule = other->schedule;
+    works_bind = other->works_bind;
+    numb_cpu = other->numb_cpu;
+}
+
+void ImpScheduleView::print() const {
+    for (auto& [key, value]: schedule){
+        std::cout << key << ": [";
+
+        for (auto work: value){
+            std::cout << work << "[" << work_time[work] << "], ";
+        }
+
+        std::cout << "]" << std::endl;
+    }
+}
+
