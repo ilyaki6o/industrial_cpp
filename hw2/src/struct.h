@@ -5,12 +5,19 @@
 #include <random>
 #include <vector>
 #include <map>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
 
 
 class ScheduleView {
 public:
     virtual void print() const = 0;
     virtual long long get_loss() const = 0;
+    virtual std::string to_string() const = 0;
 
     virtual ~ScheduleView() = default;
 };
@@ -39,12 +46,14 @@ private:
     Mutation& mutation;
     TemperatureLaw& temp_decrease_law;
     long long iter = 1;
-    int iter_with_imp = iter;
+    long long iter_with_imp = iter;
 
     double curret_temp;
     double start_temp;
     long long cur_loss;
     long long best_loss;
+
+    int data_socket;
 
     std::random_device rd;
     std::mt19937 gen = std::mt19937(rd());
@@ -56,17 +65,9 @@ public:
         Mutation& MutationObj,
         ScheduleView* View,
         ScheduleView* BestView,
-        TemperatureLaw& TempLaw
-    ):
-    start_temp(StartTemp),
-    mutation(MutationObj),
-    temp_decrease_law(TempLaw),
-    curret_view(View),
-    best_view(BestView)
-    {
-        cur_loss = curret_view->get_loss();
-        best_loss = best_view->get_loss();
-    }
+        TemperatureLaw& TempLaw,
+        std::string SockName
+    );
 
     void step();
     void update_loss(long long new_loss);
@@ -102,6 +103,18 @@ public:
         }
     }
 
+    ImpScheduleView(
+        int CPUs,
+        std::vector<int>& workTime,
+        std::map<int, std::vector<int>>& Schedule,
+        std::map<int, int>& Bind
+    ):
+    numb_cpu(CPUs),
+    work_time(workTime),
+    schedule(Schedule),
+    works_bind(Bind)
+    {}
+
     void copy(ImpScheduleView* other);
 
     int getNumbWorks(){
@@ -114,6 +127,7 @@ public:
 
     void print() const override;
     long long get_loss() const override;
+    std::string to_string() const override;
 
     ~ImpScheduleView() override = default;
 };

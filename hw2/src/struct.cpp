@@ -61,6 +61,14 @@ void SimulateAnnealing::run(){
 
         iter++;
     }
+
+    std::string best_in_str = best_view->to_string();
+
+    const char* best_in_char = best_in_str.c_str();
+
+    int ret = write(data_socket, best_in_char, strlen(best_in_char) + 1);
+
+    close(data_socket);
 }
 
 void ImpMutation::perform(ScheduleView* view){
@@ -115,3 +123,61 @@ void ImpScheduleView::print() const {
     }
 }
 
+
+SimulateAnnealing::SimulateAnnealing(
+    double StartTemp,
+    Mutation& MutationObj,
+    ScheduleView* View,
+    ScheduleView* BestView,
+    TemperatureLaw& TempLaw,
+    std::string SockName
+):
+start_temp(StartTemp),
+mutation(MutationObj),
+temp_decrease_law(TempLaw),
+curret_view(View),
+best_view(BestView)
+{
+    struct sockaddr_un addr;
+    int ret;
+
+    data_socket = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (data_socket == -1) {
+        perror("socket");
+        exit(EXIT_FAILURE);
+    }
+
+    memset(&addr, 0, sizeof(struct sockaddr_un));
+
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, SockName.c_str(), sizeof(addr.sun_path) - 1);
+
+    ret = connect (data_socket, (const struct sockaddr *) &addr,
+                   sizeof(struct sockaddr_un));
+
+    if (ret == -1) {
+        fprintf(stderr, "The server is down.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    cur_loss = curret_view->get_loss();
+    best_loss = best_view->get_loss();
+}
+
+std::string ImpScheduleView::to_string() const {
+    std::string res = std::to_string(this->numb_cpu) + "\n";
+    res += std::to_string(this->get_loss()) + "\n";
+
+    for (auto& [key, value]: schedule){
+        res += std::to_string(key);
+
+        for (auto work: value){
+            res += " ";
+            res += std::to_string(work);
+        }
+
+        res += "\n";
+    }
+
+    return res;
+}
