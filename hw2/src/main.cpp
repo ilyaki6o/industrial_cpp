@@ -4,9 +4,10 @@
 #include <unistd.h>
 #include <filesystem>
 #include <sys/wait.h>
+#include <fstream>
 
 std::string FILE_NAME_PATERN = "./sockets/sock_";
-int BUFFER_SIZE = 2048;
+int BUFFER_SIZE = 1024;
 int MAX_ITER_WITHOUT_IMP_PARAL = 10;
 
 namespace fs = std::filesystem;
@@ -86,17 +87,44 @@ void createPath(fs::path path){
 }
 
 int main(int argc, char* argv[]){
-    if (argc != 4) {
-        std::cout << "Please use the next scheme: file tasks_num processes_num processors_num" << std::endl;
-        return 0;
+    std::string file_name = argv[1];
+
+    std::string law_type = "boltzmann";
+    int processors = 1;
+
+    if (argc >= 3) {
+        law_type = argv[2];
     }
 
-    int numb_works = std::stoi(argv[1]);
-    int numb_cpu = std::stoi(argv[2]);
-    int processors = std::stoi(argv[3]);
+    if (argc == 4) {
+        processors = std::atoi(argv[3]);
+
+        if (processors > 1){
+            MAX_ITER_WITHOUT_IMP_PARAL = 10;
+        }
+    }
+
+    std::ifstream input_file(file_name);
+
+    if (!input_file.is_open()) {
+        std::cerr << "Can't open file\n";
+        exit(1);
+    }
+
+    int cpu_numb;
+    int work;
+    char separator;
+    input_file >> cpu_numb;
+    input_file >> separator;
+
+    std::vector<int> works;
+
+    while (input_file >> work) {
+        works.push_back(work);
+        input_file >> separator;
+    }
 
     char buffer[BUFFER_SIZE];
-    std::vector<int> works = generate_works(numb_works);
     std::vector<int> sockets;
 
     int ret;
@@ -143,7 +171,15 @@ int main(int argc, char* argv[]){
 
 
     ImpMutation mutation = ImpMutation();
-    BoltzmannLaw temp_law = BoltzmannLaw();
+    TemperatureLaw* temp_law;
+
+    if (law_type == "boltzmann") {
+        temp_law = new BoltzmannLaw();
+    } else if (law_type == "cauchy") {
+        temp_law = new CauchyLaw();
+    } else {
+        temp_law = new ThirdLaw();
+    }
 
     ImpScheduleView* best_schedule = new ImpScheduleView();
     long long best_loss;
@@ -153,7 +189,7 @@ int main(int argc, char* argv[]){
     long long iter_with_imp = iter;
 
     while(iter - iter_with_imp <= MAX_ITER_WITHOUT_IMP_PARAL){
-        ImpScheduleView* cur_schedule = new ImpScheduleView(numb_cpu, works);
+        ImpScheduleView* cur_schedule = new ImpScheduleView(cpu_numb, works);
 
         if (iter == 0){
             best_schedule->copy(cur_schedule);
@@ -171,7 +207,7 @@ int main(int argc, char* argv[]){
                 exit(EXIT_FAILURE);
             }else if(pid == 0){
                 std::string file_name = FILE_NAME_PATERN + std::to_string(i) + ".sock";
-                SimulateAnnealing res = SimulateAnnealing(1000, mutation, cur_schedule, best_schedule, temp_law, file_name);
+                SimulateAnnealing res = SimulateAnnealing(1000, mutation, cur_schedule, best_schedule, *temp_law, file_name);
 
                 res.run();
 
@@ -191,8 +227,8 @@ int main(int argc, char* argv[]){
 
             std::string str_view = "";
 
-            while(read(data_socket, buffer, BUFFER_SIZE) != 0){
-                buffer[BUFFER_SIZE - 1] = 0;
+            while((ret = read(data_socket, buffer, sizeof(buffer) - 1)) > 0){
+                buffer[ret] = 0x00;
                 str_view += std::string(buffer);
             }
 
@@ -226,57 +262,10 @@ int main(int argc, char* argv[]){
     }
 
     std::cout << best_loss << std::endl;
-    best_schedule->print();
+    //best_schedule->print();
 
     delete(best_schedule);
+    delete(temp_law);
 
     return 0;
 }
-
-//int main(){
-//    std::vector<int> works = std::vector({1, 2, 3, 4, 10, 12, 3, 100, 3, 5, 17, 2, 5, 4});
-//    ImpScheduleView* cur_schedule = new ImpScheduleView(5, works);
-//    ImpScheduleView* best_schedule = new ImpScheduleView();
-//    best_schedule->copy(cur_schedule);
-//
-//    best_schedule->print();
-//    std::cout << best_schedule->get_loss() << std::endl;
-//
-//    std::cout << std::endl;
-//
-//    ImpMutation mutation = ImpMutation();
-//    BoltzmannLaw temp_law = BoltzmannLaw();
-//    SimulateAnnealing res = SimulateAnnealing(1000, mutation, cur_schedule, best_schedule, temp_law);
-//    res.run();
-//
-//    best_schedule->print();
-//    std::cout << best_schedule->get_loss() << std::endl;
-//
-//    std::cout << "\nIterations: " << res.getIter() << std::endl;
-//
-//    delete cur_schedule;
-//    delete best_schedule;
-//
-//    return 0;
-//}
-
-//int main(){
-//    std::vector<int> works = std::vector({1, 2, 3, 4, 10, 12, 3, 100, 3, 5, 17, 2, 5, 4});
-//    ImpScheduleView* cur_schedule = new ImpScheduleView(5, works);
-//    ImpMutation mutation = ImpMutation();
-//
-//    cur_schedule->print();
-//    std::cout<< cur_schedule->get_loss() << std::endl;
-//    std::string cur_s = cur_schedule->to_string();
-//
-//    ImpScheduleView* new_view = parse_to_view(cur_s.c_str(), works);
-//    std::cout << std::endl;
-//
-//    new_view->print();
-//    std::cout << parse_to_loss(cur_s.c_str()) << std::endl;
-//
-//    delete cur_schedule;
-//    delete new_view;
-//
-//    return 0;
-//}

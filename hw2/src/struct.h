@@ -92,14 +92,9 @@ public:
         int CPUs,
         std::vector<int>& workTime
     ): numb_cpu(CPUs), work_time(workTime) {
-        std::random_device rd;
-        std::mt19937 gen = std::mt19937(rd());
-        std::uniform_int_distribution<> dis_cpu(0, numb_cpu - 1);
-
         for (int i = 0; i < work_time.size(); i++){
-            int cpu_numb = dis_cpu(gen);
-            schedule[cpu_numb].push_back(i);
-            works_bind[i] = cpu_numb;
+            schedule[0].push_back(i);
+            works_bind[i] = 0;
         }
     }
 
