@@ -1,5 +1,6 @@
 #include "struct.h"
 #include <iostream>
+#include <algorithm>
 
 int MAX_ITER_WITHOUT_IMP = 100;
 int STEPS_WIHOUT_DECR = 10;
