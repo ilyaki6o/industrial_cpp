@@ -1,0 +1,117 @@
+\documentclass[openany, twoside, a4paper, 12pt]{extbook}
+
+\usepackage[utf8]{inputenc}
+\usepackage{rotating}
+\usepackage[russian]{babel}
+\usepackage{amsfonts} 
+\usepackage{amstext}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{graphicx} 
+\usepackage{subfig}
+\usepackage{color}
+\usepackage{svg}
+\usepackage{epstopdf}
+\usepackage[unicode]{hyperref}
+\usepackage[nottoc]{tocbibind} 
+\usepackage{verbatim}
+\usepackage{listings}
+\usepackage{indentfirst}
+\usepackage{commath}
+\usepackage[colorinlistoftodos, prependcaption]{todonotes}
+\usepackage{multirow}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{amsmath}
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+\author{Гончаров Илья Викторович \\ 421 гр.}
+\title{Задача оптимизации построения расписания выполнения задач на множестве процессов}
+\date{\today}
+
+\begin{document}
+    \maketitle
+	\section*{Формальная постановка}
+	\subsection*{Дано:}
+	
+	\begin{itemize}
+	    \item \( N \) — количество независимых работ;
+	    \item \( M \) — количество процессоров;
+	    \item \( t_i \), \( i = 1, 2, \dots, N \) — время выполнения каждой работы \( i \), \( t_i > 0 \).
+	\end{itemize}
+	
+	\subsection*{Требуется:}
+	
+	Построить расписание выполнения всех
+	\( N \) работ на \( M \) процессорах без прерываний, минимизируя указанный критерий.
+
+	\subsection*{Расписание}
+
+	Расписание представлено в виде булевой матрицы $X$ размера $ M \times N $, в которой каждому процессору соответствует строка матрицы, а каждому столбцу - задача, которую необходимо выполнить. Значение 1 стоит в клетке с координатами (i, j), если i-ому процессору назначена на выполнение j-ая задача, иначе в этой клетке стоит 0.
+
+   Время начала выполнения работы определяется формулой $$t^{start}_i = \sum^{b}_{k=1}t^{finish}_{i-1},$$ где b - количество работ на том же процессоре, на котором выполняется работа i, которые выполняются до работы i. Время окончания работы определяется формулой $$t_i^{finish} = t^{start}_i + t_i$$ 
+
+    \begin{flushleft}
+	   Приведем пример расписания. 
+    \end{flushleft}
+	\begin{table}[h]
+	\begin{tabular}{|p{1.8cm}||p{1.8cm}|p{1.8cm}|p{1.8cm}|p{1.8cm}|p{1.8cm}|} 
+		\hline
+		& 1 & 2 & 3 & \ldots & $ N $ \\ 
+		\hline
+        \hline
+			1 & 0 & 1 & 0 & \ldots & 0 \\ 
+		\hline
+			2 & 1 & 0 & 0 & \ldots & 0 \\ 
+		\hline
+			3 & 0 & 0 & 1 & \ldots & 0 \\ 
+		\hline
+			4 & 0 & 0 & 0 & \ldots & 0 \\ 
+		\hline
+			\ldots & \ldots  & \ldots  & \ldots  & \ldots & \ldots  \\ 	
+		\hline
+			$M-1$ & 0 & 0 & 0 & \ldots & 1 \\ 
+		\hline
+			$M$ & 0 & 0 & 0 & \ldots & 0\\ 
+		\hline
+	\end{tabular}
+		\caption{Пример расписания}
+		\label{rasp}
+	\end{table}
+
+    \newpage
+
+ 	В данном примере:
+	\begin{itemize}
+		\item 1-ая задача выполняется 2 процессором; 
+		\item 2-ая задача выполняется 1 процессором;
+		\item 3-ая задача выполняется 3 процессором;
+		\item N-ая задача выполняется M - 1 процессором.
+	\end{itemize}
+
+	\subsection*{Минимизируемый критерий:}
+		
+	Критерий выбирается на основе значения контрольной суммы CRC32 от фамилии и инициалов:
+	\begin{itemize}
+		\label{cr1}
+	    \item Остаток от деления CRC32 на 2 равен 1: минимизируется \( K_1 \);
+	    \item Остаток от деления CRC32 на 2 равен 0: минимизируется \( K_2 \).
+	\end{itemize}
+	Мой критерий --- К2
+	
+    \begin{flushleft}
+	Критерий \( K_2 \):       
+    \end{flushleft}
+	\[
+	K_2 = \sum^N_{i=1}t^{finish}_i,
+	\]
+	
+	\subsection*{Ограничения на корректность расписания:}
+	
+	Расписание должно удовлетворять следующим условиям:
+	\begin{itemize}
+	    \item $\sum_{i = 1}^{M} x_{ij} = 1, \forall j \in [1, N]$ --- т.е каждая работа назначена только на один процессор и все работы распределены по процессорам.
+	    \item $t_i^{finish} - t^{start}_i = t_i$ --- прерываний при выполнении работы нет, $t_{i} = const$ --- время выполнения каждой работы фиксировано
+        \item $t_j^{finish} = t^{start}_{k}$ где $t_j$ и $t_k$ соответствуют $x_{ij}$ и $x_{ik}$, причем $j < k$.
+	\end{itemize}
+\end{document}
