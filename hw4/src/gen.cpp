@@ -8,7 +8,7 @@ int DeadCells::surv_score(const Game& field) {
     const Game& after_run = field.run(numbSteps);
 
     if (after_run.isStationary()){
-        return 0 /* - after_run.countAlive() */; 
+        return 0; 
     }
 
     return field_size * field_size - after_run.countAlive(); 
@@ -28,27 +28,14 @@ population_ptr ProportionalSelection::select(
 
     double mean_score = (double)sum_score / pop->size();
 
-    // if (!mean_score) return pop;
-
-    // std::cout << "(selecting) mean: " << mean_score << std::endl;
+    if (!mean_score) return pop;
 
     for (int i = 0; i < pop->size(); i++){
-        // if (selected->size() >= pop->size()) break;
-        
-        // std::cout << "score: " << scores[i] << " coef: " << scores[i] / mean_score << std::endl;
-
         for (int j = 1; j <= scores[i] / mean_score; j++){
-            // if (selected->size() < pop->size()) {
                 selected->push_back((*pop)[i]);
-            // }else {
-            //     break;
-            // }
         }
 
-        if (rand_p(gen) < (scores[i] / mean_score) - (int)(scores[i] / mean_score)
-                /* && selected->size() < pop->size() */)
-        {
-            // std::cout << "\t" << (scores[i] / mean_score) - (int)(scores[i] / mean_score) << std::endl;
+        if (rand_p(gen) < (scores[i] / mean_score) - (int)(scores[i] / mean_score)) {
             selected->push_back((*pop)[i]);
         }
     }
@@ -86,9 +73,6 @@ population_ptr TwoPointCV::crossing(const population_ptr& pop) {
     int p1_i = p1 / row_size, p1_j = p1 % row_size;
     int p2_i = p2 / row_size, p2_j = p2 % row_size;
 
-    // std::cout << "p1: " << p1_i << " " << p1_j << std::endl;
-    // std::cout << "p2: " << p2_i << " " << p2_j << std::endl;
-
     population_ptr new_pop = std::make_shared<population>();   
 
     while (new_pop->size() < Npop) {
@@ -97,11 +81,7 @@ population_ptr TwoPointCV::crossing(const population_ptr& pop) {
 
         while (idx1 == idx2) idx2 = rand_individ(gen);
 
-        // std::cout << "ind_idx: " << idx1 << " " << idx2 << std::endl;
-
         if (rand_p(gen) < crossover_p) {
-            // std::cout << (*pop)[idx1].toString() << "\n~~~\n" << (*pop)[idx2].toString() << std::endl;
-            
             std::vector<std::vector<bool>> child1, child2;           
 
             for (int i = 0; i < row_size; i++){
@@ -127,9 +107,6 @@ population_ptr TwoPointCV::crossing(const population_ptr& pop) {
 
             Game tmp1 = Game(child1);
             Game tmp2 = Game(child2);
-
-            // std::cout << "\n\t ============ \t\n" << std::endl; 
-            // std::cout << tmp1.toString() << "\n~~~\n" << tmp2.toString() << std::endl;
 
             new_pop->push_back(tmp1);
             new_pop->push_back(tmp2);
@@ -196,9 +173,6 @@ std::shared_ptr<Game> GenAlgo::run() {
     int steps_without_inc = 0;
 
     while (steps_without_inc < 50) {
-
-        // std::cout << "\n NEW ITER \n" << std::endl;
-
         population_ptr selected = selection->select(pop, surv_scores);
         pop = crossover->crossing(selected);
         mutation->mutate(pop);
@@ -209,12 +183,6 @@ std::shared_ptr<Game> GenAlgo::run() {
 
         std::shared_ptr<Game> best_in_pop = std::make_shared<Game>(field_size);
         int pop_best_score = selectBest(pop, surv_scores, best_in_pop);
-
-        // std::cout << "\n ======= \n" << std::endl;
-
-        // for (auto& individ: (*pop)) {
-        //     std::cout << individ.toString() << "\n" << std::endl;
-        // }
 
         if (pop_best_score > best_score) {
             best_score = pop_best_score;

@@ -16,7 +16,7 @@ double PCROSS = 0.8;
 int main() {
     std::vector<std::thread> threads;
 
-    for (int i = 0; i < 9; ++i) {
+    for (int i = 0; i < 10; ++i) {
         threads.emplace_back(std::thread([=]() {
             double mutation_prob = PMUT_INIT * (std::pow(1.5, i));
             double min_value = FIELDSIZE * FIELDSIZE;
@@ -33,7 +33,7 @@ int main() {
                 
                 population_ptr pop = std::make_shared<population>();
 
-                for (int i = 0; i < POPSIZE; i++) {
+                for (int k = 0; k < POPSIZE; k++) {
                     pop->push_back(Game(FIELDSIZE, Initial::random));
                 }
 
@@ -50,18 +50,18 @@ int main() {
                         );
 
                 std::shared_ptr<Game> best_solution = main_cycle.run();
-                int best_score = surv_func->surv_score(*best_solution);
+                Game best_after100 = best_solution->run(100);
+                int count_alive = best_after100.countAlive();
 
                 unsigned time = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::system_clock::now() - now).count();
 
-                if (min_value > best_score) {
-                    best_in_series = best_solution;
-                    min_value = best_score;
+                if (min_value > count_alive) {
+                    min_value = count_alive;
                 }
 
-                if (max_value < best_score) {
-                    max_value = best_score;
+                if (max_value < count_alive) {
+                    max_value = count_alive;
                 }
 
                 if (max_time < time) {
@@ -70,14 +70,14 @@ int main() {
                 
                 //TODO
 
-                std::string filename = "result/series_" + std::to_string(i + 1) + "_run_" + std::to_string(j + 1) + "_sol";
+                std::string filename = "result_half/series_" + std::to_string(i + 1) + "_run_" + std::to_string(j + 1) + "_sol";
 
                 std::ofstream out_orig(filename + ".txt");
-                out_orig << best.ToString();
+                out_orig << best_solution->toString();
                 out_orig.close();
 
                 std::ofstream out_end(filename + "_after100.txt");
-                out_end << best.SkipConditions(100).ToString();
+                out_end << best_after100.toString();
                 out_end.close();
             }
 

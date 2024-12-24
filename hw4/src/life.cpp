@@ -151,11 +151,8 @@ Game Game::run(int numb_steps, int state_in_sec) const {
 }
 
 void Game::PrintState(int state_in_sec) const {
-		system("clear");
-        std::cout << std::endl;
+		int s = system("clear");
 
-		// std::cout << "\n\nstep " << (int)steps << "\n\n";
-		//
         std::cout << this->toString() << std::endl;
 
 		std::this_thread::sleep_for(std::chrono::nanoseconds(1000000000 / state_in_sec));

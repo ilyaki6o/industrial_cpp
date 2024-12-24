@@ -1,46 +1,63 @@
 #include <iostream>
 #include "src/gen.h"
+#include <chrono>
+#include <cmath>
+#include <fstream>
 
 
 int POPSIZE = 100;
 int FIELDSIZE = 50;
 int LIFESTEPS = 100;
-double PMUT = 1. / (FIELDSIZE * FIELDSIZE); 
+double PMUT_INIT = 1. / (FIELDSIZE * FIELDSIZE); 
 double PCROSS = 0.8;
 
 
-std::vector<std::vector<bool>> field = {
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 1, 0, 0, 0, 0, 0, 0},
-    {0, 1, 1, 1, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-};
+Game str_to_game(std::string filename) {
+    std::ifstream input_file(filename);
+    std::string line;
 
+    std::vector<std::vector<bool>> field;
 
-int main(void){
-    population_ptr pop = std::make_shared<population>();
+    while (std::getline(input_file, line)) {
+        int len = line.length();
+        std::vector<bool> buf;
+
+        for (int j = 0; j < len; ++j) {
+            buf.push_back(line[j] == '-' ? false : true);
+        }
+
+        field.push_back(buf);
+    }
+
+    input_file.close();
+
+    return Game(field);
+}
+
+void research() {
+    double mutation_prob = PMUT_INIT * (std::pow(1.5, 0));
+    double min_value = FIELDSIZE * FIELDSIZE;
+    double max_value = 0;
+    long max_time = 0;
+
+    std::shared_ptr<Game> best_in_series = std::make_shared<Game>(FIELDSIZE);
+
     std::shared_ptr<TSurvivalFunc> surv_func = std::make_shared<DeadCells>(LIFESTEPS);
     std::shared_ptr<TSelection> selection = std::make_shared<ProportionalSelection>();
     std::shared_ptr<TCrossover> crossover = std::make_shared<TwoPointCV>(PCROSS, POPSIZE);
-    std::shared_ptr<TMutation> mutation = std::make_shared<BitMutation>(PMUT);
+    std::shared_ptr<TMutation> mutation = std::make_shared<BitMutation>(mutation_prob);
     
-    for (int i = 0; i < POPSIZE; i++) {
-        Game cur(FIELDSIZE, Initial::random);
-        // int score = surv_func->surv_score(cur);
+    population_ptr pop = std::make_shared<population>();
 
-        // std::cout << "\t" << score << "\n" << cur.toString() << "\n" << std::endl;
+    for (int i = 0; i < POPSIZE; i++) {
+        Game cur = Game(FIELDSIZE, Initial::random);
+
+        std::cerr << cur.toString() << std::endl;
 
         pop->push_back(cur);
     }
 
-    std::cout << (1 == 1.) << std::endl;
-    std::cout << "\n ------- \n" << std::endl;
+    auto now = std::chrono::system_clock::now();
 
     GenAlgo main_cycle(
             surv_func,
@@ -53,35 +70,40 @@ int main(void){
             );
 
     std::shared_ptr<Game> best_solution = main_cycle.run();
+    Game best_after100 = best_solution->run(100);
+    int count_alive = best_after100.countAlive();
 
-    int best_score = surv_func->surv_score(*best_solution);
+    unsigned time = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now() - now).count();
 
-    Game best_after100 = best_solution->run(100, 0);
-    // int best_score = best_solution->countAlive();
+    if (min_value > count_alive) {
+        min_value = count_alive;
+    }
+
+    if (max_value < count_alive) {
+        max_value = count_alive;
+    }
+
+    if (max_time < time) {
+        max_time = time;
+    }
+
+    std::cout << min_value << ", " << max_value << ", " << max_time << std::endl;
+}
 
 
-    std::cout << "\t" << best_score << "\t" << best_after100.countAlive() << std::endl;
-    // std::cout << "\t" << best_score << "\n" << best_solution->toString() << std::endl;
-    // for (const auto& individ: (*pop)) {
-    //     int score = surv_func.surv_score(individ);
-    //     std::cout << "\t" << score << "\n" << individ.toString() << "\n" << std::endl;
-    // }
+int main(void){
+    Game tmp = str_to_game("fields/planer.txt");
 
-    // std::cout << "Before (" << s1.getSize() << "x" << s1.getSize() << "):\n" << surv_func.surv_score(s1) << "\n" << std::endl;
-    //
-    // s1 = s1.run(8);
-    //
-    // std::cout << "After (" << s1.getSize() << "x" << s1.getSize() << "):\n" << surv_func.surv_score(s1) << "\n" << std::endl;
-
-    // std::cout << PMUT << std::endl;
-    //
-    // Game tmp(field);
-    // 
     // std::cout << "Before\n" << tmp.toString() << std::endl; 
-    //
-    // Game after100 = tmp.run(10, 2);
-    //
+
+    Game after100 = tmp.run(24, 2);
+
     // std::cout << "\nAfter: " << after100.countAlive() << "\n" << after100.toString() << std::endl; 
+    //
+    //
+
+    // research();
 
     return 0;
 }
