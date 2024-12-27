@@ -63,7 +63,6 @@ public:
     SimulateAnnealing(
         double StartTemp,
         Mutation& MutationObj,
-        ScheduleView* View,
         ScheduleView* BestView,
         TemperatureLaw& TempLaw,
         std::string SockName
@@ -86,7 +85,7 @@ public:
     std::map<int, int> works_bind;
     int numb_cpu;
 
-    ImpScheduleView(){};
+    ImpScheduleView() = default;
 
     ImpScheduleView(
         int CPUs,

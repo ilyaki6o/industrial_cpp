@@ -9,6 +9,7 @@
 std::string FILE_NAME_PATERN = "./sockets/sock_";
 int BUFFER_SIZE = 1024;
 int MAX_ITER_WITHOUT_IMP_PARAL = 10;
+int MAX_ITER_WITHOUT_IMP_SEQ = 10;
 
 namespace fs = std::filesystem;
 
@@ -16,25 +17,24 @@ ImpScheduleView* parse_to_view(std::string str_view, std::vector<int>& work_time
     std::map<int, std::vector<int>> schedule;
     std::map<int, int> works_bind;
 
-    std::istringstream stream(str_view); // Поток для работы с данными строки
+    std::istringstream stream(str_view); 
     int num_processors;
     long long loss;
 
-    stream >> num_processors >> loss; // Чтение количества процессоров и loss
+    stream >> num_processors >> loss; 
 
-    // Обработка оставшихся данных в строке
     std::string line;
-    std::getline(stream, line); // Пропускаем остаток первой строки после `loss`
+    std::getline(stream, line); 
 
     for (int i = 0; i < num_processors; ++i) {
-        std::getline(stream, line); // Чтение строки для каждого процессора
+        std::getline(stream, line); 
         std::istringstream line_stream(line);
 
         int processor_id;
-        line_stream >> processor_id; // Чтение номера процессора
+        line_stream >> processor_id; 
 
         int task;
-        while (line_stream >> task) { // Чтение номеров задач для процессора
+        while (line_stream >> task) { 
             schedule[processor_id].push_back(task);
             works_bind[task] = processor_id;
         }
@@ -51,12 +51,11 @@ ImpScheduleView* parse_to_view(std::string str_view, std::vector<int>& work_time
 }
 
 long long parse_to_loss(std::string str_view){
-    std::istringstream stream(str_view); // Поток для работы с данными строки
+    std::istringstream stream(str_view); 
     int num_processors;
     long long loss;
 
-    stream >> num_processors >> loss; // Чтение количества процессоров и loss
-                                      //
+    stream >> num_processors >> loss; 
     return loss;
 }
 
@@ -92,6 +91,8 @@ int main(int argc, char* argv[]){
     std::string law_type = "boltzmann";
     int processors = 1;
 
+    int iter_stop = MAX_ITER_WITHOUT_IMP_SEQ; 
+
     if (argc >= 3) {
         law_type = argv[2];
     }
@@ -100,7 +101,7 @@ int main(int argc, char* argv[]){
         processors = std::atoi(argv[3]);
 
         if (processors > 1){
-            MAX_ITER_WITHOUT_IMP_PARAL = 10;
+            iter_stop = MAX_ITER_WITHOUT_IMP_PARAL;
         }
     }
 
@@ -124,7 +125,6 @@ int main(int argc, char* argv[]){
         input_file >> separator;
     }
 
-    char buffer[BUFFER_SIZE];
     std::vector<int> sockets;
 
     int ret;
@@ -169,7 +169,6 @@ int main(int argc, char* argv[]){
         sockets.push_back(listen_socket);
     }
 
-
     ImpMutation mutation = ImpMutation();
     TemperatureLaw* temp_law;
 
@@ -181,23 +180,14 @@ int main(int argc, char* argv[]){
         temp_law = new ThirdLaw();
     }
 
-    ImpScheduleView* best_schedule = new ImpScheduleView();
-    long long best_loss;
-    std::string best_str_view;
+    ImpScheduleView* best_schedule = new ImpScheduleView(cpu_numb, works);
+    long long best_loss = best_schedule->get_loss();
+    std::string best_str_view = best_schedule->to_string();
 
     long long iter = 0;
     long long iter_with_imp = iter;
 
-    while(iter - iter_with_imp <= MAX_ITER_WITHOUT_IMP_PARAL){
-        ImpScheduleView* cur_schedule = new ImpScheduleView(cpu_numb, works);
-
-        if (iter == 0){
-            best_schedule->copy(cur_schedule);
-
-            best_loss = best_schedule->get_loss();
-            best_str_view = best_schedule->to_string();
-        }
-
+    while(iter - iter_with_imp <= iter_stop){
         pid_t pid, wpid;
         int status = 0;
 
@@ -207,7 +197,7 @@ int main(int argc, char* argv[]){
                 exit(EXIT_FAILURE);
             }else if(pid == 0){
                 std::string file_name = FILE_NAME_PATERN + std::to_string(i) + ".sock";
-                SimulateAnnealing res = SimulateAnnealing(1000, mutation, cur_schedule, best_schedule, *temp_law, file_name);
+                SimulateAnnealing res = SimulateAnnealing(1000, mutation, best_schedule, *temp_law, file_name);
 
                 res.run();
 
@@ -219,6 +209,7 @@ int main(int argc, char* argv[]){
 
         for (auto socket : sockets){
             int data_socket = accept(socket, NULL, NULL);
+            char buffer[BUFFER_SIZE];
 
             if (data_socket == -1) {
                 perror("accept");
@@ -251,10 +242,11 @@ int main(int argc, char* argv[]){
             best_loss = best_schedule->get_loss();
         }
 
+        std::cout << "best_loss: " << best_loss << std::endl;
+
         while((wpid = wait(&status)) > 0);
 
         iter++;
-        delete(cur_schedule);
     }
 
     for (auto socket : sockets){

@@ -128,7 +128,6 @@ void ImpScheduleView::print() const {
 SimulateAnnealing::SimulateAnnealing(
     double StartTemp,
     Mutation& MutationObj,
-    ScheduleView* View,
     ScheduleView* BestView,
     TemperatureLaw& TempLaw,
     std::string SockName
@@ -136,7 +135,7 @@ SimulateAnnealing::SimulateAnnealing(
 start_temp(StartTemp),
 mutation(MutationObj),
 temp_decrease_law(TempLaw),
-curret_view(View),
+curret_view(BestView),
 best_view(BestView)
 {
     struct sockaddr_un addr;
